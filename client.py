@@ -111,29 +111,32 @@ class TinkoffAPIClient():
         now=datetime.utcnow()
         res=''
         price ={'timeframe': timeframe, 'tickers': {}}
-        for k,v in self.all_instruments.items():
-            if k in set(my_instruments):
+        for name in sorted(self.all_instruments.keys() & my_instruments):
+            try:
                 res = self._client.market.market_candles_get(
-                    figi=v, _from=(now-timedelta(days=depth)).isoformat()+'Z',
+                    figi=self.all_instruments[name], _from=(now-timedelta(days=depth)).isoformat()+'Z',
                     to=now.isoformat()+'Z', interval=timeframe)
                 #print('res:', res)
-                if res.status == 'Ok':
-                    candles = res.payload.candles
-                    if len(candles) == 0:
-                        price['tickers'].update({k: ERR_NO_DATA.format(now, k)})
-                        continue
-                    else:
-                        price['tickers'].update({k: {}})
-                    for i in range(len(candles)):
-                        try:
-                            candle_date = candles[i].time.strftime("%d%b")
-                            price['tickers'][k].update({candle_date: {
-                                'high': candles[i].h,
-                                'open': candles[i].o,
-                                'close': candles[i].c,
-                                'low': candles[i].l}})
-                        except Exception as e:
-                            print("ERR:",e)
+            except Exception as e:
+                print('ERR:', e)
+                break
+            if res.status == 'Ok':
+                candles = res.payload.candles
+                if len(candles) == 0:
+                    price['tickers'].update({name: ERR_NO_DATA.format(now, name)})
+                    continue
+                else:
+                    price['tickers'].update({name: {}})
+                for i in range(len(candles)):
+                    try:
+                        candle_date = candles[i].time.strftime("%d%b")
+                        price['tickers'][name].update({candle_date: {
+                            'high': candles[i].h,
+                            'open': candles[i].o,
+                            'close': candles[i].c,
+                            'low': candles[i].l}})
+                    except Exception as e:
+                        print("ERR:",e)
         return price
 
 
